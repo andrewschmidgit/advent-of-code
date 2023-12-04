@@ -4,7 +4,7 @@ use crate::color::Color;
 
 #[derive(Debug, PartialEq)]
 pub struct Set {
-    colors: Vec<Color>
+    pub colors: Vec<Color>
 }
 
 impl Set {
@@ -41,6 +41,19 @@ impl Set {
         }
 
         true
+    }
+
+    pub fn power(&self) -> u32 {
+        let mut power = 1;
+        for color in self.colors.iter() {
+            match color {
+                Color::Red(v) => power *= v,
+                Color::Green(v) => power *= v,
+                Color::Blue(v) => power *=v,
+            }
+        }
+
+        power
     }
 }
 
@@ -140,6 +153,21 @@ mod tests {
 
         for (set, other, m) in successes {
             assert!(set.is_possible_within(&other), "{}", m);
+        }
+    }
+
+    #[test]
+    fn set_power() {
+        let exps = vec![
+            (48, Set::new(vec![Color::Red(4), Color::Green(2), Color::Blue(6)])),
+            (12, Set::new(vec![Color::Red(1), Color::Green(3), Color::Blue(4)])),
+            (1560, Set::new(vec![Color::Red(20), Color::Green(13), Color::Blue(6)])),
+            (630, Set::new(vec![Color::Red(14), Color::Green(3), Color::Blue(15)])),
+            (36, Set::new(vec![Color::Red(6), Color::Green(3), Color::Blue(2)])),
+        ];
+
+        for (ex, s) in exps {
+            assert_eq!(ex, s.power());
         }
     }
 }

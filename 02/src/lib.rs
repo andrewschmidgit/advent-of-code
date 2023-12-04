@@ -13,15 +13,11 @@ pub fn run(contents: &str) -> Result<(), String> {
         .collect::<Result<Vec<Game>, String>>()?;
 
     let set = Set::new(vec![Color::Red(12), Color::Green(13), Color::Blue(14)]);
-    let possible = get_possible(&input, set);
+    let possible: u32 = input.iter().filter_map(|g| g.is_possible(&set)).sum();
+    let power: u32 = input.iter().map(|g| g.get_min_set().power()).sum();
 
-    let sum: u32 = possible.into_iter().sum();
-
-    println!("sum: {}", sum);
+    println!("solution 1: {}", possible);
+    println!("solution 2: {}", power);
 
     Ok(())
-}
-
-fn get_possible(games: &[Game], set: Set) -> Vec<u32> {
-    games.iter().filter_map(|g| g.is_possible(&set)).collect()
 }
