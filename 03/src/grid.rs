@@ -10,13 +10,13 @@ pub struct Grid {
 }
 
 impl Grid {
-    pub fn find_symbol_positions(&self) -> Vec<Point> {
+    pub fn find_symbol_positions(&self) -> Vec<(char, Point)> {
         let mut pos = vec![];
 
         for (y, row) in self.array.iter().enumerate() {
             for (x, el) in row.iter().enumerate() {
-                if let Element::Symbol(_) = el {
-                    pos.push(Point::new(x, y));
+                if let Element::Symbol(c) = el {
+                    pos.push((*c, Point::new(x, y)));
                 }
             }
         }
@@ -185,7 +185,7 @@ mod tests {
     fn grid_gets_symbols() {
         let input = "_";
         let grid: Grid = input.parse().unwrap();
-        let exp = vec![Point::new(0, 0)];
+        let exp = vec![('_', Point::new(0, 0))];
 
         let positions = grid.find_symbol_positions();
 
