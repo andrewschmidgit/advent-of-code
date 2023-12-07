@@ -1,60 +1,20 @@
-use std::collections::HashMap;
-use std::str::FromStr;
-
-use crate::card::Card;
-
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
-enum HandType {
-    High,
-    OnePair,
-    TwoPair,
-    Three,
-    Full,
-    Four,
-    Five,
-}
-
-impl HandType {
-    pub fn new(cards: &Vec<Card>) -> Result<Self, String> {
-        if cards.len() != 5 {
-            return Err(format!("Could not construct type from hand: {:?}", cards));
-        }
-
-        let map: HashMap<_, _> = cards.iter().fold(HashMap::new(), |mut acc, c| {
-            *acc.entry(c).or_insert(0) += 1;
-            acc
-        });
-
-        let (_, value) = map.iter().max_by(|one, two| one.1.cmp(two.1)).ok_or("Expected contents")?;
-
-        match value {
-            5 => Ok(Self::Five),
-            4 => Ok(Self::Four),
-            3 => Ok(if map.len() == 2 { Self::Full } else { Self::Three }),
-            2 => Ok(if map.len() == 3 { Self::TwoPair } else { Self::OnePair }),
-            1 => Ok(Self::High),
-            _ => Err("Not valid".into())
-        }
-    }
-}
+use crate::{card::card_value, hand_type::HandType};
 
 #[derive(Debug, Eq)]
 pub struct Hand {
     pub bid: u32,
-    cards: Vec<Card>,
+    cards: Vec<u32>,
     t: HandType,
 }
 
-impl FromStr for Hand {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+impl Hand {
+    pub fn new(s: &str, joker: bool) -> Result<Self, String> {
         let (cards, bid) = s.split_once(' ').ok_or("Could not split on whitespace")?;
 
         let bid = bid.parse().map_err(|_| "Could not parse bid")?;
-        let cards = cards.chars().map(|c| c.into()).collect();
+        let cards = cards.chars().map(|c| card_value(c, joker)).collect();
 
-        let hand_type = HandType::new(&cards)?;
+        let hand_type = HandType::new(&cards, joker)?;
 
         Ok(Self {
             bid,
@@ -79,7 +39,6 @@ impl PartialOrd for Hand {
 impl Ord for Hand {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         if self.t != other.t {
-            // flipping because a greater Hand has less unique cards
             return self.t.cmp(&other.t);
         }
 
@@ -101,34 +60,12 @@ mod tests {
 
     use super::*;
 
-    #[test]
-    fn hand_type_news_correctly() {
-        let exps = vec![
-            (HandType::Five, vec![Card::A, Card::A, Card::A, Card::A, Card::A]),
-            (HandType::Four, vec![Card::A, Card::A, Card::A, Card::A, Card::K]),
-            (HandType::Full, vec![Card::A, Card::A, Card::A, Card::K, Card::K]),
-            (HandType::Three, vec![Card::A, Card::A, Card::A, Card::K, Card::Q]),
-            (HandType::TwoPair, vec![Card::A, Card::A, Card::K, Card::K, Card::Q]),
-            (HandType::OnePair, vec![Card::A, Card::A, Card::K, Card::Q, Card::J]),
-            (HandType::High, vec![Card::A, Card::K, Card::Q, Card::J, Card::T]),
-        ];
-
-        for (exp, cards) in exps.into_iter() {
-            assert_eq!(exp, HandType::new(&cards).unwrap());
-        }
-    }
 
     #[test]
     fn hand_parses() {
-        let cards = vec![
-            Card::Number(3),
-            Card::Number(2),
-            Card::T,
-            Card::Number(3),
-            Card::K,
-        ];
+        let cards = vec![ 3, 2, 10, 3, 13, ];
 
-        let t = HandType::new(&cards).unwrap();
+        let t = HandType::new(&cards, false).unwrap();
 
         let exp = Hand {
             bid: 765,
@@ -136,21 +73,17 @@ mod tests {
             t,
         };
 
-        let hand: Hand = "32T3K 765".parse().unwrap();
+        let hand = Hand::new("32T3K 765", false).unwrap();
 
         assert_eq!(exp, hand);
-    }
-
-    fn hand(s: &str) -> Hand {
-        s.parse().unwrap()
     }
 
     #[test]
     fn hand_compares() {
         let exps = vec![
-            (Ordering::Equal, hand("32T3K 0"), hand("32T3K 0")),
-            (Ordering::Greater, hand("KK677 0"), hand("KTJJT 0")),
-            (Ordering::Less, hand("32T3K 0"), hand("T55J5 0")),
+            (Ordering::Equal, Hand::new("32T3K 0", false), Hand::new("32T3K 0", false)),
+            (Ordering::Greater, Hand::new("KK677 0", false), Hand::new("KTJJT 0", false)),
+            (Ordering::Less, Hand::new("32T3K 0", false), Hand::new("T55J5 0", false)),
         ];
 
         for (ord, one, two) in exps {

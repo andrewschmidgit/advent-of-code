@@ -1,24 +1,12 @@
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Card {
-    Number(u32),
-    T,
-    J,
-    Q,
-    K,
-    A,
-}
-
-impl From<char> for Card {
-    fn from(value: char) -> Self {
-        match value {
-            'A' => Card::A,
-            'K' => Card::K,
-            'Q' => Card::Q,
-            'J' => Card::J,
-            'T' => Card::T,
-            '0'..='9' => Card::Number(value.to_digit(10).unwrap()),
-            _ => panic!("Not valid Card character")
-        }
+pub fn card_value(c: char, joker: bool) -> u32 {
+    match c {
+        'A' => 14,
+        'K' => 13,
+        'Q' => 12,
+        'J' => if joker { 1 } else { 11 },
+        'T' => 10,
+        '0'..='9' => c.to_digit(10).unwrap(),
+        _ => panic!("Not valid Card character")
     }
 }
 
@@ -27,20 +15,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn card_orders() {
-        // Sanity check
-        assert!(Card::A > Card::K);
-        assert!(Card::T > Card::Number(4));
-        assert!(Card::Number(8) > Card::Number(4));
-    }
-
-    #[test]
     fn card_parses_from_char() {
-        assert_eq!(Card::Number(3), '3'.into());
-        assert_eq!(Card::T, 'T'.into());
-        assert_eq!(Card::J, 'J'.into());
-        assert_eq!(Card::Q, 'Q'.into());
-        assert_eq!(Card::K, 'K'.into());
-        assert_eq!(Card::A, 'A'.into());
+        assert_eq!(1, card_value('J', true));
+        assert_eq!(3, card_value('3', false));
+        assert_eq!(10, card_value('T', false));
+        assert_eq!(11, card_value('J', false));
+        assert_eq!(12, card_value('Q', false));
+        assert_eq!(13, card_value('K', false));
+        assert_eq!(14, card_value('A', false));
     }
 }

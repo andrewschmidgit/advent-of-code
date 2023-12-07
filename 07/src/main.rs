@@ -6,7 +6,11 @@ fn main() {
 
     let contents = fs::read_to_string(filename).expect("file exist. now.");
 
-    let mut hands = camel::parse(&contents);
+    let mut hands = camel::parse(&contents, false);
+
+    for (i, h) in hands.iter().enumerate() {
+        println!("Hand {}: {:?}", i, h);
+    }
 
     hands.sort();
 
