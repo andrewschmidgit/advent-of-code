@@ -1,22 +1,38 @@
-use std::str::FromStr;
-use crate::range::Range;
+use std::{str::FromStr, ops::Range};
 
 #[derive(Debug, PartialEq)]
 pub struct Map {
     pub title: String,
-    ranges: Vec<Range>,
+    ranges: Vec<(Range<u64>, Range<u64>)>,
 }
 
 impl Map {
-    pub fn map(&self, value: &u64) -> u64 {
-        for range in self.ranges.iter() {
-            if let Some(v) = range.map(value) {
-                return v;
-            }
+    pub fn map(&self, seed: &u64) -> u64 {
+        let range = self.ranges.iter().find(|(src, _)| src.contains(seed));
+
+        if let Some((src, dest)) = range {
+            return seed - src.start + dest.start;
         }
 
-        *value
+        *seed
     }
+}
+
+fn parse_mapping(s: &str) -> Result<(Range<u64>, Range<u64>), String> {
+    let parts: Vec<u64> = s
+        .splitn(3, ' ')
+        .filter_map(|s| s.parse().ok())
+        .collect();
+
+    let dest = parts.first().ok_or("expected dest")?;
+    let src = parts.get(1).ok_or("expected src")?;
+    let length = parts.get(2).ok_or("expected length")?;
+
+
+    Ok((
+        *src..(src + length),
+        *dest..(dest + length),
+    ))
 }
 
 impl FromStr for Map {
@@ -27,7 +43,7 @@ impl FromStr for Map {
         let title = lines.next().ok_or("Should have a title line")?.to_owned();
 
         let maps = lines
-            .filter_map(|l| l.parse().ok())
+            .filter_map(|l| parse_mapping(l).ok())
             .collect();
         
         Ok(Map { 
@@ -49,12 +65,13 @@ r"test to test map:
 1 2 3
 4 5 6
 10 11 1";
+
         let exp = Map {
             title: "test to test map:".into(),
             ranges: vec![
-                "1 2 3".parse().unwrap(),
-                "4 5 6".parse().unwrap(),
-                "10 11 1".parse().unwrap(),
+                parse_mapping("1 2 3").unwrap(),
+                parse_mapping("4 5 6").unwrap(),
+                parse_mapping("10 11 1").unwrap(),
             ]
         };
 

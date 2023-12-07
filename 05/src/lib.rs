@@ -1,7 +1,6 @@
 use map::Map;
 
 mod map;
-mod range;
 
 pub fn run(contents: &str, print: bool) {
     let seed_line = contents.lines().next().expect("seed line");
@@ -16,28 +15,12 @@ pub fn run(contents: &str, print: bool) {
 
     let maps: Vec<Map> = map_strs.filter_map(|s| s.parse().ok()).collect();
 
-    let mut finals = vec![];
-    for s in seeds.iter() {
-        if print {
-            println!();
-            println!("Seed: {}", s);
-        }
-        let mut value = *s;
-        for m in maps.iter() {
-            if print {
-                print!("Map {} | {} -> ", m.title, value);
-            }
-            value = m.map(&value);
-            if print {
-                println!("{}", value);
-            }
-        }
+    let min = seeds
+        .into_iter()
+        .map(|s| maps.iter().fold(s, |s, m| m.map(&s)))
+        .min().expect("Should be a min");
 
-        finals.push(value);
-    }
-
-    let lowest = finals.iter().min().expect("Has locations in number");
-    println!("solution 1 (lowest location): {}", lowest);
+    println!("solution 1 (lowest location): {}", min);
 }
 
 fn seeds(seed_line: &str) -> Vec<u64> {
