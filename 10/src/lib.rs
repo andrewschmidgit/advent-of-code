@@ -11,9 +11,12 @@ pub fn run(s: &str) {
 
     let walker = Walker::new(grid).unwrap();
 
-    let (d, p) = walker.find_furthest_point().unwrap();
+    let (d, _p) = walker.find_furthest_point().unwrap();
 
     println!("solution 1 (furthest): {}", d);
+
+    let i = walker.get_enclosed_tiles();
+    println!("solution 2 (enclosed tiles): {}", i);
 }
 
 fn build_grid(s: &str) -> Grid<Pipe> {

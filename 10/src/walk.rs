@@ -1,14 +1,101 @@
 use crate::{grid::{Grid, Point}, pipe::{Pipe, PIPES_CONNECT_UP, PIPES_CONNECT_LEFT, PIPES_CONNECT_RIGHT, PIPES_CONNECT_DOWN}};
 
 #[derive(Debug)]
+pub enum Direction {
+    North,
+    South,
+    East,
+    West,
+}
+
+fn get_start_pipe(p: Point, g: &Grid<Pipe>) -> Pipe {
+    let mut options = vec![];
+
+    let s = p;
+    let w = g.width;
+    let h = g.height;
+
+    if s.x > 0 {
+        options.push(Point::new(s.x - 1, s.y));
+    }
+
+    if s.x < (w - 1) {
+        options.push(Point::new(s.x + 1, s.y));
+    }
+
+    if s.y > 0 {
+        options.push(Point::new(s.x, s.y - 1));
+    }
+
+    if s.y < (h - 1) {
+        options.push(Point::new(s.x, s.y + 1));
+    }
+
+    let options: Vec<_> = options
+        .into_iter()
+        .filter(|o| {
+            g.connects(s, *o)
+        })
+        .collect();
+
+    let pos_0 = options[0];
+    let pos_1 = options[1];
+
+    let x_d_0 = s.x as i32 - pos_0.x as i32;
+    let y_d_0 = s.y as i32 - pos_0.y as i32;
+    let x_d_1 = s.x as i32 - pos_1.x as i32;
+    let y_d_1 = s.y as i32 - pos_1.y as i32;
+
+    let pos_0_connection = match (x_d_0, y_d_0) {
+        (0, 1) => Direction::North,
+        (0, -1) => Direction::South,
+        (-1, 0) => Direction::East,
+        (1, 0) => Direction::West,
+        _ => panic!("Shouldn't be here"),
+    };
+
+    let pos_1_connection = match (x_d_1, y_d_1) {
+        (0, 1) => Direction::North,
+        (0, -1) => Direction::South,
+        (-1, 0) => Direction::East,
+        (1, 0) => Direction::West,
+        _ => panic!("Shouldn't be here"),
+    };
+
+    match (pos_0_connection, pos_1_connection) {
+        (Direction::North, Direction::South) |
+            (Direction::South, Direction::North) => Pipe::Pipe,
+
+        (Direction::East, Direction::West) |
+            (Direction::West, Direction::East) => Pipe::Dash,
+
+        (Direction::North, Direction::East) |
+            (Direction::East, Direction::North) => Pipe::NtoE,
+
+        (Direction::North, Direction::West) |
+            (Direction::West, Direction::North) => Pipe::WtoN,
+
+        (Direction::South, Direction::East) |
+            (Direction::East, Direction::South) => Pipe::EtoS,
+
+        (Direction::South, Direction::West) |
+            (Direction::West, Direction::South) => Pipe::WtoS,
+
+        _ => panic!("Shouldn't be here either"),
+    }
+}
+
+#[derive(Debug)]
 pub struct Walker {
     start: Point,
     grid: Grid<Pipe>,
 }
 
 impl Walker {
-    pub fn new(grid: Grid<Pipe>) -> Result<Self, String> {
+    pub fn new(mut grid: Grid<Pipe>) -> Result<Self, String> {
         let start = grid.find(&Pipe::Start).ok_or("expected start")?;
+        let start_pipe = get_start_pipe(start, &grid);
+        grid.set(start_pipe, start);
 
         Ok(Self {
             start,
@@ -22,7 +109,6 @@ impl Walker {
         let s = self.start;
         let w = self.grid.width;
         let h = self.grid.height;
-
 
         if s.x > 0 {
             options.push(Point::new(s.x - 1, s.y));
@@ -77,6 +163,88 @@ impl Walker {
             right = self.grid.next(right_prev, right).ok_or("expected right to connect")?;
             right_prev = temp;
         }
+    }
+
+    pub fn get_enclosed_tiles(&self) -> i32 {
+        // find the loop
+        let path = self.get_path();
+
+        let mut inside_count = 0;
+        // look at every tile
+        for y in 0..self.grid.height {
+            let mut inside = false;
+            for x in 0..self.grid.width {
+                let point = Point::new(x, y);
+                let pipe = *path.get(point);
+
+                match pipe {
+                    Pipe::Start => panic!("shouldn't happen"),
+                    Pipe::Ground => if inside {
+                        inside_count += 1;
+                    },
+                    Pipe::Pipe |
+                    Pipe::NtoE |
+                    Pipe::WtoN => inside = !inside,
+                    Pipe::Dash |
+                    Pipe::WtoS |
+                    Pipe::EtoS => (),
+                }
+            }
+        }
+
+        inside_count
+    }
+
+
+    fn get_path(&self) -> Grid<Pipe> {
+        let mut options = vec![];
+
+        let s = self.start;
+        let w = self.grid.width;
+        let h = self.grid.height;
+
+        if s.x > 0 {
+            options.push(Point::new(s.x - 1, s.y));
+        }
+
+        if s.x < (w - 1) {
+            options.push(Point::new(s.x + 1, s.y));
+        }
+
+        if s.y > 0 {
+            options.push(Point::new(s.x, s.y - 1));
+        }
+
+        if s.y < (h - 1) {
+            options.push(Point::new(s.x, s.y + 1));
+        }
+
+        let start_pipe = self.grid.get(self.start);
+
+        let mut previous = self.start;
+        let mut current = match start_pipe {
+            Pipe::Pipe => Point::new(s.x, s.y + 1),
+            Pipe::Dash => Point::new(s.x + 1, s.y),
+            Pipe::NtoE => Point::new(s.x, s.y - 1),
+            Pipe::WtoN => Point::new(s.x, s.y - 1),
+            Pipe::WtoS => Point::new(s.x, s.y + 1),
+            Pipe::EtoS => Point::new(s.x, s.y + 1),
+            _ => panic!("Invalid start pipe"),
+        };
+
+        let mut path = Grid::new(self.grid.width, self.grid.height);
+
+        loop {
+            path.set(*self.grid.get(current), current);
+
+            if current == self.start { break; }
+
+            let temp = current;
+            current = self.grid.next(previous, current).expect("expected right to connect");
+            previous = temp;
+        }
+
+        path
     }
 }
 
@@ -174,5 +342,22 @@ r".....
         for (from, to) in exps.into_iter() {
             assert!(grid.connects(from, to), "{} -> {} did not connect", from, to);
         }
+    }
+
+    #[test]
+    fn grid_finds_enclosed() {
+        let grid = build_grid("...........
+.S-------7.
+.|F-----7|.
+.||.....||.
+.||.....||.
+.|L-7.F-J|.
+.|..|.|..|.
+.L--J.L--J.
+...........");
+
+        let walker = Walker::new(grid).unwrap();
+
+        assert_eq!(walker.get_enclosed_tiles(), 4);
     }
 }

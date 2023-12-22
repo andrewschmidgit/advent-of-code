@@ -59,19 +59,23 @@ impl<T> Grid<T> {
         self.array.get_mut(p.y * self.width + p.x).unwrap()
     }
 
-    pub fn find(&self, pipe: &T) -> Option<Point> 
+    pub fn find(&self, value: &T) -> Option<Point> 
     where
         T: PartialEq
     {
         let (i, _) = self.array
             .iter()
             .enumerate()
-            .find(|(_, p)| *p == pipe)?;
+            .find(|(_, p)| *p == value)?;
 
         Some(Point {
             x: i % self.width,
-            y: i / self.height,
+            y: i / self.width,
         })
+    }
+
+    pub fn set(&mut self, value: T, p: Point) {
+        self.array[p.y * self.width + p.x] = value;
     }
 
     pub fn set_all<F>(&mut self, set: F)
