@@ -1,6 +1,6 @@
 use std::{fmt::Debug, str::FromStr};
 
-use crate::{point::Point, vector::Vector};
+use crate::{pattern::Pattern, point::Point, vector::Vector};
 
 const DIRECTIONS: [Vector; 8] = [
     Vector { x: -1, y: -1 },
@@ -145,6 +145,67 @@ where
     }
 }
 
+impl Grid<char> {
+    pub fn find(self: &Self, pattern: &Pattern) -> Option<Vec<usize>> {
+        let (offset, char) = pattern.get_start()?;
+
+        let positions: Vec<_> = self
+            .array
+            .iter()
+            .enumerate()
+            .filter_map(|(i, c)| {
+                if *c == char && i >= offset {
+                    Some(i - offset)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        // 0 1 2
+        // 3 4 5
+        // 6 7 8
+        // starting at 1, width: 3, sub_width: 2, sub_height: 2, I want 1 2 4 5
+        // i % width >= 1 && i % width < 1 + sub_height
+
+        let mut matches = vec![];
+
+        for p in positions {
+            let chars: Vec<_> = self
+                .array
+                .iter()
+                .enumerate()
+                .filter_map(|(i, c)| {
+                    let i_row_pos = i % self.width;
+                    let p_row_pos = p % self.width;
+                    let i_col_pos = i / self.width;
+                    let p_col_pos = p / self.width;
+
+                    let p_x_too_small = i_row_pos < p_row_pos;
+                    let p_x_too_large = i_row_pos >= p_row_pos + pattern.width;
+                    let p_y_too_small = i_col_pos < p_col_pos;
+                    let p_y_too_large = i_col_pos >= p_col_pos + pattern.len() / pattern.width;
+                    if p_x_too_small || p_x_too_large || p_y_too_small || p_y_too_large {
+                        return None;
+                    }
+
+                    Some(*c)
+                })
+                .collect();
+
+            if pattern == chars.as_slice() {
+                matches.push(p);
+            }
+        }
+
+        if matches.len() > 0 {
+            Some(matches)
+        } else {
+            None
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -267,5 +328,31 @@ XMAS.S
             let found_chars: Vec<_> = sequence.iter().map(|(_, c)| **c).collect();
             assert_eq!(search_text, found_chars);
         }
+    }
+
+    #[test]
+    fn grid_findx() {
+        let grid: Grid<char> = ".M.S......
+..A..MSMS.
+.M.S.MAA..
+..A.ASMSM.
+.M.S.M....
+..........
+S.S.S.S.S.
+.A.A.A.A..
+M.M.M.M.M.
+.........."
+            .parse()
+            .unwrap();
+
+        let pattern: Pattern = "M.S
+.A.
+M.S"
+        .parse()
+        .unwrap();
+
+        let matching_indexes = grid.find(&pattern).unwrap();
+
+        assert_eq!(matching_indexes, vec![1, 21]);
     }
 }
