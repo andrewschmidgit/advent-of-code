@@ -15,24 +15,19 @@ fn main() {
     let es = equations(&input);
 
     // part 1
-    let total_calibration_result: u64 = es
-        .iter()
-        .filter_map(|e| {
-            if e.find_operator_configurations().len() > 0 {
-                Some(e.result)
-            } else {
-                None
-            }
-        })
-        .sum();
+    let result = get_total_calibration(&es, &[Operator::Add, Operator::Multiply]);
+    println!("total_calibration_result: {}", result);
 
-    println!("total_calibration_result: {}", total_calibration_result);
+    // part 2
+    let result = get_total_calibration(&es, &[Operator::Add, Operator::Multiply, Operator::Concat]);
+    println!("total_calibration_result: {}", result);
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 enum Operator {
     Add,
     Multiply,
+    Concat,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -42,10 +37,10 @@ struct Equation {
 }
 
 impl Equation {
-    pub fn find_operator_configurations(&self) -> Vec<Vec<Operator>> {
+    pub fn find_operator_configurations<'a>(&self, ops: &'a [Operator]) -> Vec<Vec<&'a Operator>> {
         let num_operators = self.operands.len() - 1;
 
-        let operator_variations = generate_operators(num_operators as u32);
+        let operator_variations = generate_operators(num_operators as u32, ops);
 
         let mut working_operator_variations = vec![];
 
@@ -59,6 +54,10 @@ impl Equation {
                 .reduce(|a, b| match v_iter.next().unwrap() {
                     Operator::Add => a + b,
                     Operator::Multiply => a * b,
+                    Operator::Concat => {
+                        let concat: String = a.to_string() + &b.to_string();
+                        u64::from_str_radix(&concat, 10).unwrap()
+                    }
                 })
                 .unwrap();
 
@@ -87,29 +86,51 @@ fn equation<'a>(input: &'a str) -> IResult<&'a str, Equation> {
     Ok((input, Equation { result, operands }))
 }
 
-fn generate_operators(length: u32) -> Vec<Vec<Operator>> {
-    let upper_bound = 2_u32.pow(length);
+fn generate_operators(length: u32, supported_operators: &[Operator]) -> Vec<Vec<&Operator>> {
+    let radix = supported_operators.len();
+    let upper_bound = supported_operators.len().pow(length);
 
     (0..upper_bound)
         .map(|n| {
             (0..length)
-                .map(|d| {
-                    let digit = (n >> d) & 1;
+                .filter_map(|d| {
+                    let index = (n / radix.pow(d)) % radix;
 
-                    if digit == 0 {
-                        Operator::Add
-                    } else {
-                        Operator::Multiply
-                    }
+                    supported_operators.get(index)
                 })
-                .collect::<Vec<_>>()
+                .collect()
         })
         .collect()
+}
+
+fn get_total_calibration(es: &Vec<Equation>, ops: &[Operator]) -> u64 {
+    es.iter()
+        .filter_map(|e| {
+            if e.find_operator_configurations(ops).len() > 0 {
+                Some(e.result)
+            } else {
+                None
+            }
+        })
+        .sum()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn generates_operators() {
+        let ops = generate_operators(2, &[Operator::Add, Operator::Multiply]);
+        let exp = vec![
+            vec![&Operator::Add, &Operator::Add],
+            vec![&Operator::Multiply, &Operator::Add],
+            vec![&Operator::Add, &Operator::Multiply],
+            vec![&Operator::Multiply, &Operator::Multiply],
+        ];
+
+        assert_eq!(ops, exp);
+    }
 
     #[test]
     fn equation_gets_parsed() {
@@ -151,7 +172,7 @@ mod tests {
         );
 
         for e in es {
-            let configs = e.find_operator_configurations();
+            let configs = e.find_operator_configurations(&[Operator::Add, Operator::Multiply]);
             println!("{:?}: {}", e, configs.len());
         }
     }
