@@ -1,10 +1,19 @@
+mod list;
+
 use std::{
+    collections::BTreeMap,
     env,
     fmt::{self, Display},
     fs,
+    ops::Range,
 };
 
+use list::parse_list;
+
 type Blocks = Vec<Block>;
+type Span = Range<u32>;
+type Files = BTreeMap<u32, Span>;
+type Free = Vec<Span>;
 
 fn main() {
     let filename = env::args().skip(1).next().expect("filename");
@@ -13,8 +22,11 @@ fn main() {
     let mut blocks = parse(&input);
     compress(&mut blocks);
     let cs = checksum(&blocks);
+    println!("pt1: checksum: {}", cs);
 
-    println!("checksum: {}", cs);
+    let mut blocks = parse_list(&input);
+    blocks.compress();
+    println!("pt2: checksum: {}", blocks.checksum());
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
