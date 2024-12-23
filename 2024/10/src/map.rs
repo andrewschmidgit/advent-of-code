@@ -17,7 +17,7 @@ pub struct Map {
 }
 
 impl Map {
-    pub fn score(&self) -> Result<usize, MapError> {
+    pub fn score(&self) -> Result<(usize, usize), MapError> {
         let trailheads = self
             .heights_by_position
             .get(&0)
@@ -25,6 +25,7 @@ impl Map {
 
         let mut queue = VecDeque::new();
         let mut score = 0;
+        let mut rating = 0;
 
         for th in trailheads {
             queue.push_back((th, 0));
@@ -50,6 +51,13 @@ impl Map {
                     .collect();
 
                 for vp in valid_points {
+                    if next_height == MAX_HEIGHT {
+                        if visited_ends.insert(vp) {
+                            score += 1;
+                        }
+
+                        rating += 1;
+                    }
                     if next_height == MAX_HEIGHT && visited_ends.insert(vp) {
                         score += 1;
                         continue;
@@ -59,7 +67,7 @@ impl Map {
             }
         }
 
-        Ok(score)
+        Ok((score, rating))
     }
 }
 
@@ -142,7 +150,7 @@ mod tests {
 9876"
             .parse()
             .unwrap();
-        let score = map.score().unwrap();
+        let (score, _) = map.score().unwrap();
         assert_eq!(score, 1);
     }
 
@@ -157,12 +165,12 @@ mod tests {
 9.....9"
             .parse()
             .unwrap();
-        let score = map.score().unwrap();
+        let (score, _) = map.score().unwrap();
         assert_eq!(score, 2);
     }
 
     #[test]
-    fn map_scores_2() {
+    fn map_scores_and_rates_0() {
         let map: Map = "..90..9
 ...1.98
 ...2..7
@@ -172,8 +180,9 @@ mod tests {
 987...."
             .parse()
             .unwrap();
-        let score = map.score().unwrap();
+        let (score, rating) = map.score().unwrap();
         assert_eq!(score, 4);
+        assert_eq!(rating, 13);
     }
 
     #[test]
@@ -187,7 +196,7 @@ mod tests {
 .....01"
             .parse()
             .unwrap();
-        let score = map.score().unwrap();
+        let (score, _) = map.score().unwrap();
         assert_eq!(score, 3);
     }
 
@@ -203,7 +212,39 @@ mod tests {
 10456732"
             .parse()
             .unwrap();
-        let score = map.score().unwrap();
+        let (score, rating) = map.score().unwrap();
         assert_eq!(score, 36);
+        assert_eq!(rating, 81);
+    }
+
+    #[test]
+    fn map_rating_0() {
+        let map: Map = ".....0.
+..4321.
+..5..2.
+..6543.
+..7..4.
+..8765.
+..9...."
+            .parse()
+            .unwrap();
+
+        let (_, rating) = map.score().unwrap();
+        assert_eq!(rating, 3);
+    }
+
+    #[test]
+    fn map_rating_1() {
+        let map: Map = "012345
+123456
+234567
+345678
+4.6789
+56789."
+            .parse()
+            .unwrap();
+
+        let (_, rating) = map.score().unwrap();
+        assert_eq!(rating, 227);
     }
 }

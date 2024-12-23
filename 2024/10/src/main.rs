@@ -10,9 +10,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let map: Map = input.parse()?;
 
-    let score = map.score().expect("should score");
+    let (score, rating) = map.score().expect("should score");
 
     println!("pt1 score: {}", score);
+    println!("pt2 rating: {}", rating);
 
     Ok(())
 }
